@@ -1,11 +1,11 @@
-# ─────────────────────────────────────────────────
-#  core/views.py (updated for required permission logic)
-# ─────────────────────────────────────────────────
+
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from school_mgmt.core.utils import CSVExportMixin
 
 from .models import Teacher, Student
 from .serializers import TeacherSerializer, StudentSerializer, CustomTokenObtainPairSerializer
@@ -138,3 +138,20 @@ class LogoutView(TokenObtainPairView):
             return Response({"detail": "Logged out successfully."}, status=205)
         except Exception:
             return Response({"detail": "Invalid refresh token."}, status=400)
+
+
+class TeacherExportView(CSVExportMixin, TeacherViewSet):
+    csv_filename = "teachers.csv"
+    csv_fields = [
+        "id", "user__username", "subject_specialization",
+        "employee_id", "date_of_joining", "status"
+    ]
+
+
+class StudentExportView(CSVExportMixin, StudentViewSet):
+    csv_filename = "students.csv"
+    csv_fields = [
+        "id", "user__username", "roll_number",
+        "student_class", "date_of_birth",
+        "admission_date", "status", "assigned_teacher_id",
+    ]

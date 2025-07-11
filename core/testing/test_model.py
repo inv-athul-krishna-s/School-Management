@@ -2,14 +2,16 @@ import pytest
 from datetime import date
 from core.models import User, Teacher, Student
 
-pytestmark = pytest.mark.django_db  # all tests in this file hit the DB
+pytestmark = pytest.mark.django_db
+
 
 def test_user_str():
-    user = User.objects.create_user(username="alice", password="x", role="teacher")
-    assert str(user) == "alice (teacher)"
+    u = User.objects.create_user("bob", password="x", role="teacher")
+    assert str(u) == "bob (teacher)"
+
 
 def test_teacher_str():
-    t_user = User.objects.create_user(username="teach", password="x", role="teacher")
+    t_user = User.objects.create_user("teach", password="x", role="teacher")
     teacher = Teacher.objects.create(
         user=t_user,
         phone="111",
@@ -20,16 +22,17 @@ def test_teacher_str():
     )
     assert "Physics" in str(teacher)
 
-def test_student_delete_cascades_user():
-    s_user = User.objects.create_user(username="stud", password="x", role="student")
-    student = Student.objects.create(
+
+def test_student_delete_removes_user():
+    s_user = User.objects.create_user("stud", password="x", role="student")
+    stud = Student.objects.create(
         user=s_user,
-        phone="222",
+        phone="000",
         roll_number="R1",
         student_class="10-A",
         date_of_birth="2010-01-01",
         admission_date="2024-01-01",
         status="active",
     )
-    student.delete()
+    stud.delete()
     assert not User.objects.filter(pk=s_user.pk).exists()

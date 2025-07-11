@@ -27,10 +27,7 @@ def jwt_headers(username, password):
 
 class TestRolePermissions:
     def setup_method(self):
-        # Admin
         self.admin = User.objects.create_user("admin", password="adm123", role="admin")
-
-        # Teacher + profile
         self.t_user = User.objects.create_user("teach", password="teach123", role="teacher")
         self.teacher = Teacher.objects.create(
             user=self.t_user,
@@ -41,7 +38,6 @@ class TestRolePermissions:
             status="active",
         )
 
-        # Student assigned to teacher
         self.s_user = User.objects.create_user("stud", password="stud123", role="student")
         self.student = Student.objects.create(
             user=self.s_user,
@@ -54,7 +50,6 @@ class TestRolePermissions:
             assigned_teacher=self.teacher,
         )
 
-    # ─────────────────── Admin CRUD ────────────────────
     def test_admin_creates_student(self):
         client = api_client()
         hdr = jwt_headers("admin", "adm123")
@@ -78,7 +73,7 @@ class TestRolePermissions:
         r = client.post(reverse("student-list"), payload, format="json", **hdr)
         assert r.status_code == status.HTTP_201_CREATED
 
-    # ─────────────────── Teacher rules ─────────────────
+
     def test_teacher_cannot_create_teacher(self):
         client = api_client()
         hdr = jwt_headers("teach", "teach123")
@@ -116,7 +111,6 @@ class TestRolePermissions:
         )
         assert r.status_code == status.HTTP_404_NOT_FOUND
 
-    # ─────────────────── Student rules ─────────────────
     def test_student_view_me(self):
         client = api_client()
         hdr = jwt_headers("stud", "stud123")
@@ -141,7 +135,6 @@ class TestRolePermissions:
         )
         assert r.status_code == status.HTTP_403_FORBIDDEN
 
-    # ─────────────────── Logout / blacklist ────────────
     def test_logout_blacklists_refresh(self):
         client = api_client()
         login = client.post(

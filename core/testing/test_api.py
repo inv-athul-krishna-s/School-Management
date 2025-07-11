@@ -140,12 +140,11 @@ class TestRolePermissions:
         refresh = login.data["refresh"]
 
         r_logout = client.post(reverse("logout"), {"refresh": refresh}, format="json")
-        print("Response data:", r.data)
-
+        
         assert r_logout.status_code == status.HTTP_205_RESET_CONTENT
 
         # token can no longer be refreshed
         bad = client.post(reverse("token_refresh"), {"refresh": refresh}, format="json")
-        print("Response data:", r.data)
+     
 
         assert bad.status_code == status.HTTP_401_UNAUTHORIZED

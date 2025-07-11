@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from school_mgmt.core.utils import CSVExportMixin
+from core.utils import CSVExportMixin
 
 from .models import Teacher, Student
 from .serializers import TeacherSerializer, StudentSerializer, CustomTokenObtainPairSerializer
@@ -139,6 +139,8 @@ class LogoutView(TokenObtainPairView):
         except Exception:
             return Response({"detail": "Invalid refresh token."}, status=400)
 
+
+from core.utils import CSVExportMixin 
 
 class TeacherExportView(CSVExportMixin, TeacherViewSet):
     csv_filename = "teachers.csv"

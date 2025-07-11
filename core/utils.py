@@ -3,10 +3,7 @@ from django.db import router
 from django.http import HttpResponse
 
 class CSVExportMixin:
-    """
-    Return queryset as CSV.  Override `csv_filename` & `csv_fields`.
-    Only GET allowed.
-    """
+
     csv_filename = "export.csv"
     csv_fields = []
 
@@ -23,8 +20,8 @@ class CSVExportMixin:
         for obj in qs:
             writer.writerow([getattr(obj, f) for f in self.csv_fields])
         return response
-# core/urls.py
-from .views import TeacherExportView, StudentExportView
-
-router.register(r'teachers/export', TeacherExportView, basename='teacher-export')
-router.register(r'students/export', StudentExportView, basename='student-export')
+    @staticmethod
+    def _deep_get(obj, dotted):
+        for part in dotted.split("__"):
+            obj = getattr(obj, part)
+        return obj

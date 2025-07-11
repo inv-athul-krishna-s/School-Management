@@ -51,7 +51,7 @@ class CSVExportEndpointTests(TestCase):
 
     # ------------------- admin success cases -----------------------
     def test_admin_can_export_teachers(self):
-        url = reverse("teacher-export-list")
+        url = reverse("teacher-export-list")  
         r = self.client.get(url, **self.bearer("admin", "adm"))
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r["Content-Type"], "text/csv")

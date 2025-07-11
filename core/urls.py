@@ -8,6 +8,8 @@ from .views import (
     StudentViewSet,
     CustomTokenObtainPairView,
     LogoutView,
+    TeacherExportView, 
+    StudentExportView
 )
 
 # ──────────────
@@ -16,7 +18,8 @@ from .views import (
 router = DefaultRouter()
 router.register("teachers", TeacherViewSet, basename="teacher")
 router.register("students", StudentViewSet, basename="student")
-
+router.register(r"teachers-export",  TeacherExportView, basename="teacher-export")
+router.register(r"students-export",  StudentExportView, basename="student-export")
 # ──────────────
 #  URL Patterns
 # ──────────────
@@ -29,3 +32,5 @@ urlpatterns = [
     # Core REST endpoints
     path("", include(router.urls)),
 ]
+
+

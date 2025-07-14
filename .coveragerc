@@ -1,0 +1,14 @@
+[run]
+omit =
+    */migrations/*
+    manage.py
+    */__init__.py
+    */settings.py
+    */urls.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    pass
+    return .*super().*

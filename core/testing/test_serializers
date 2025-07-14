@@ -1,0 +1,23 @@
+# core/testing/test_serializers.py
+from core.serializers import TeacherSerializer
+from core.models import User, Teacher
+import datetime as dt
+
+def test_teacher_username_uniqueness():
+    u1 = User.objects.create_user("dupuser", password="x", role="teacher")
+    Teacher.objects.create(
+        user=u1, phone="1", subject_specialization="Math",
+        employee_id="E1", date_of_joining=dt.date.today(), status="active"
+    )
+
+    data = {
+        "user": {"username": "dupuser", "password": "x"},
+        "phone": "999",
+        "subject_specialization": "Physics",
+        "employee_id": "E2",
+        "date_of_joining": "2024-01-01",
+        "status": "active"
+    }
+    serializer = TeacherSerializer(data=data)
+    assert not serializer.is_valid()
+    assert "A user with that username already exists." in serializer.errors["user"]["username"][0]

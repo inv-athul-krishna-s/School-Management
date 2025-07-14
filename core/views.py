@@ -140,20 +140,27 @@ class LogoutView(TokenObtainPairView):
             return Response({"detail": "Invalid refresh token."}, status=400)
 
 
-from core.utils import CSVExportMixin 
-
 class TeacherExportView(CSVExportMixin, TeacherViewSet):
     csv_filename = "teachers.csv"
     csv_fields = [
-        "id", "user__username", "subject_specialization",
-        "employee_id", "date_of_joining", "status"
+        "id", "user__username", "user__email", "user__first_name", "user__last_name",
+        "subject_specialization", "employee_id", "date_of_joining", "status"
+    ]
+    csv_headers = [
+        "ID", "Username", "Email", "First Name", "Last Name",
+        "Subject", "Employee ID", "Joined On", "Status"
     ]
 
 
 class StudentExportView(CSVExportMixin, StudentViewSet):
     csv_filename = "students.csv"
     csv_fields = [
-        "id", "user__username", "roll_number",
-        "student_class", "date_of_birth",
-        "admission_date", "status", "assigned_teacher_id",
+        "id", "user__username", "user__email", "user__first_name", "user__last_name",
+        "roll_number", "student_class", "date_of_birth", "admission_date",
+        "status", "assigned_teacher__user__username"
+    ]
+    csv_headers = [
+        "ID", "Username", "Email", "First Name", "Last Name",
+        "Roll Number", "Class", "Date of Birth", "Admission Date",
+        "Status", "Assigned Teacher"
     ]

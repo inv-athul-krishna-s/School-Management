@@ -98,3 +98,98 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data["role"] = self.user.role
         return data
+from .models import Exam, Question, Option, StudentExam, Answer
+
+# ----- options & questions -----
+class OptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Option
+        fields = ('id', 'text')          # hide is_correct from students
+
+
+class QuestionSerializer(serializers.ModelSerializer):
+    options = OptionSerializer(many=True, read_only=True)
+    class Meta:
+        model  = Question
+        fields = ('id', 'text', 'options')
+
+
+# ----- exams -----
+class ExamReadSerializer(serializers.ModelSerializer):
+    questions    = QuestionSerializer(many=True, read_only=True)
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name',
+                                         read_only=True)
+
+    class Meta:
+        model  = Exam
+        fields = ('id', 'title', 'description', 'teacher_name',
+                  'start_time', 'duration_min', 'questions')
+
+
+class ExamCreateSerializer(serializers.ModelSerializer):
+    """Admin/Teacher posts nested questions + options in one shot."""
+    questions = QuestionSerializer(many=True, write_only=True)
+
+    class Meta:
+        model  = Exam
+        fields = ('title', 'description', 'teacher', 'start_time',
+                  'duration_min', 'questions')
+
+    def create(self, validated_data):
+        q_data = validated_data.pop('questions')
+        exam   = Exam.objects.create(**validated_data)
+        for q in q_data:
+            opts = q.pop('options')
+            question = Question.objects.create(exam=exam, **q)
+            for opt in opts:
+                Option.objects.create(question=question, **opt)
+        return exam
+
+
+# ----- student submission -----
+class AnswerSerializer(serializers.Serializer):
+    question_id = serializers.IntegerField()
+    option_id   = serializers.IntegerField()
+
+
+class SubmitExamSerializer(serializers.Serializer):
+    answers = AnswerSerializer(many=True)
+
+
+# ----- teacher/admin results -----
+class StudentExamSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.get_full_name')
+    class Meta:
+        model  = StudentExam
+        fields = ('id', 'student_name', 'score',
+                  'started_at', 'finished_at')
+
+class OptionInputSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Option
+        fields = ["text", "is_correct"]
+class QuestionInputSerializer(serializers.ModelSerializer):
+    options = OptionInputSerializer(many=True, write_only=True)
+
+    class Meta:
+        model = Question
+        fields = ["text", "options"]
+class ExamCreateSerializer(serializers.ModelSerializer):
+    questions = QuestionInputSerializer(many=True, write_only=True)
+
+    class Meta:
+        model = Exam
+        fields = ["title", "description", "teacher", "start_time", "duration_min", "questions"]
+
+    def create(self, validated_data):
+        questions_data = validated_data.pop("questions")
+        exam = Exam.objects.create(**validated_data)
+
+        for q in questions_data:
+            options_data = q.pop("options")
+            question = Question.objects.create(exam=exam, **q)
+            for opt in options_data:
+                Option.objects.create(question=question, **opt)
+
+        return exam
+

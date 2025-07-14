@@ -9,7 +9,8 @@ from .views import (
     CustomTokenObtainPairView,
     LogoutView,
     TeacherExportView, 
-    StudentExportView
+    StudentExportView,
+    ExamViewSet
 )
 
 # ──────────────
@@ -20,6 +21,7 @@ router.register("teachers", TeacherViewSet, basename="teacher")
 router.register("students", StudentViewSet, basename="student")
 router.register(r"teachers-export",  TeacherExportView, basename="teacher-export")
 router.register(r"students-export",  StudentExportView, basename="student-export")
+router.register("exams",           ExamViewSet,         basename="exam") 
 # ──────────────
 #  URL Patterns
 # ──────────────

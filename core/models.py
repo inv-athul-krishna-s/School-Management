@@ -45,3 +45,64 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} – {self.roll_number}"
+    
+    # -----  EXAM MODELS  -----
+from django.conf import settings
+from django.db import models
+
+# Assuming you already have Teacher and Student models in core.models
+# If they live elsewhere, change the import paths accordingly.
+
+class Exam(models.Model):
+    """Created by an admin or a teacher; taken by the teacher’s students."""
+    title        = models.CharField(max_length=120)
+    description  = models.TextField(blank=True)
+    teacher      = models.ForeignKey('core.Teacher', on_delete=models.PROTECT,
+                                     related_name='exams')
+    start_time   = models.DateTimeField()
+    duration_min = models.PositiveIntegerField()
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+
+class Question(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE,
+                             related_name='questions')
+    text = models.TextField()
+
+    def __str__(self):
+        return f'{self.exam.title} – Q{self.pk}'
+
+
+class Option(models.Model):
+    question   = models.ForeignKey(Question, on_delete=models.CASCADE,
+                                   related_name='options')
+    text       = models.CharField(max_length=255)
+    is_correct = models.BooleanField(default=False)   # exactly one True / question
+
+
+class StudentExam(models.Model):
+    """A student’s single attempt at an exam."""
+    student     = models.ForeignKey('core.Student', on_delete=models.CASCADE,
+                                    related_name='exam_attempts')
+    exam        = models.ForeignKey(Exam, on_delete=models.CASCADE,
+                                    related_name='attempts')
+    started_at  = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    score       = models.DecimalField(max_digits=5, decimal_places=2,
+                                      null=True, blank=True)
+
+    class Meta:
+        unique_together = ('student', 'exam')
+
+
+class Answer(models.Model):
+    attempt  = models.ForeignKey(StudentExam, on_delete=models.CASCADE,
+                                 related_name='answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    chosen   = models.ForeignKey(Option, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('attempt', 'question')

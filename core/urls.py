@@ -32,5 +32,3 @@ urlpatterns = [
     # Core REST endpoints
     path("", include(router.urls)),
 ]
-
-

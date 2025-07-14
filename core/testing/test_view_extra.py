@@ -63,4 +63,3 @@ def test_teacher_cannot_patch_unassigned_student(api):
     url = reverse("student-detail", args=[1])
     r = api.patch(url, {"status": "inactive"}, format="json")
     assert r.status_code == status.HTTP_404_NOT_FOUND
-

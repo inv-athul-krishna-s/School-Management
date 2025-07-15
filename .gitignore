@@ -1,0 +1,18 @@
+# Ignore Python cache
+__pycache__/
+school_mgmt/school_mgmt/__pycache__/
+*.py[cod]
+
+# Ignore virtual environments
+venv/
+env/
+
+# Ignore coverage reports
+htmlcov/
+.coverage
+
+# Ignore test cache
+.pytest_cache/
+
+# Ignore database file (optional)
+db.sqlite3

@@ -153,3 +153,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- E‑mail backend (example: Gmail + app‑password) -------------
+EMAIL_BACKEND     = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST        = "smtp.gmail.com"            # Outlook: smtp-mail.outlook.com
+EMAIL_PORT        = 587                         # 465 if you prefer SSL
+EMAIL_USE_TLS     = True
+EMAIL_HOST_USER   = "h13024334@gmail.com"   # <‑‑ your personal mailbox
+EMAIL_HOST_PASSWORD = "hopu ixoi mgxz ahvb"         # Gmail app‑password or mailbox pwd
+DEFAULT_FROM_EMAIL  = "School App <h13024334@gmail.com>"

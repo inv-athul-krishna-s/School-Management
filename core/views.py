@@ -135,9 +135,26 @@ class StudentViewSet(viewsets.ModelViewSet):
 
     # ----- CRUD protections -----
     def create(self, request, *args, **kwargs):
-        if request.user.role != "admin":
-            return Response({"detail": "Only admin can create students."}, status=403)
-        return super().create(request, *args, **kwargs)
+        if request.user.role == "admin":
+            return super().create(request, *args, **kwargs)
+    
+        if request.user.role == "teacher":
+            data = request.data.copy()
+            data["assigned_teacher"] = request.user.teacher.id  # Auto-assign to self
+
+        # Parse nested user object
+            user_data = data.get("user", {})
+            if isinstance(user_data, str):  # In case it's passed as a string (JSON)
+                import json
+                user_data = json.loads(user_data)
+                data["user"] = user_data
+
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=201)
+
+        return Response({"detail": "Not allowed."}, status=403)
 
     def update(self, request, *args, **kwargs):
         if request.user.role == "student":
@@ -148,11 +165,21 @@ class StudentViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        if request.user.role != "admin":
-            return Response({"detail": "Only admin can delete students."}, status=403)
-        return super().destroy(request, *args, **kwargs)
+        obj = self.get_object()
 
-    # ----- custom endpoints -----
+        if request.user.role == "admin":
+            return super().destroy(request, *args, **kwargs)
+
+        if request.user.role == "teacher":
+            if obj.assigned_teacher and obj.assigned_teacher.user == request.user:
+                return super().destroy(request, *args, **kwargs)
+            else:
+                return Response({"detail": "Not your assigned student."}, status=403)
+
+        return Response({"detail": "Not allowed."}, status=403)
+
+
+    # ----- Providing custom end points to get their own profile -----
     @action(detail=False, methods=["get"], url_path="me")
     def me(self, request):
         if request.user.role != "student":

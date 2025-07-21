@@ -23,6 +23,10 @@ from rest_framework import generics
 
 from .models import User
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import Exam, StudentExam
 
 from core.utils import CSVExportMixin
 from .models import (
@@ -79,6 +83,13 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if request.user.role != "admin":
             return Response({"detail": "Only admin can delete teacher."}, status=403)
         return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=True, methods=["get"])
+    def students(self, request, pk=None):
+        teacher = self.get_object()
+        students = Student.objects.filter(assigned_teacher=teacher)
+        serializer = StudentSerializer(students, many=True)
+        return Response(serializer.data)
 
     # ----- custom endpoints -----
     @action(detail=False, methods=["get"], url_path="me")
@@ -228,9 +239,8 @@ class StudentViewSet(viewsets.ModelViewSet):
                         status=201 if created else 400)
 
 
-# ─────────────────────────────────────────────
 #  AUTH VIEW(S)
-# ─────────────────────────────────────────────
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -283,21 +293,31 @@ class ExamViewSet(viewsets.ModelViewSet):
     """
     Admin      → sees all exams, can create and assign any teacher  
     Teacher    → sees & edits only own exams, auto‑assigned on create  
-    Student    → sees exams created by their assigned_teacher  
+    Student    → sees exams created by their assigned_teacher  and admin 
     """
     permission_classes = [IsAuthenticated]
 
     # ----- queryset per role -----
     def get_queryset(self):
         u = self.request.user
+
         if u.role == "admin":
-            return Exam.objects.select_related("teacher")
-        if u.role == "teacher":
-            return Exam.objects.filter(teacher__user=u)
-        if u.role == "student" and hasattr(u, "student"):
-            t = u.student.assigned_teacher
-            return Exam.objects.filter(teacher=t) if t else Exam.objects.none()
+            return Exam.objects.select_related("teacher").all()
+
+        elif u.role == "teacher" and hasattr(u, "teacher"):
+            return Exam.objects.filter(teacher=u.teacher)
+
+        elif u.role == "student" and hasattr(u, "student"):
+            assigned_teacher = u.student.assigned_teacher
+            student_class = u.student.student_class
+
+            return Exam.objects.filter(
+                teacher=assigned_teacher,
+                target_class=student_class
+        )
+
         return Exam.objects.none()
+
 
     # ----- serializer choice -----
     def get_serializer_class(self):
@@ -390,9 +410,8 @@ class PasswordResetRequestView(generics.GenericAPIView):
         user = User.objects.get(email__iexact=ser.validated_data["email"])
         uid   = urlsafe_base64_encode(smart_bytes(user.pk))
         token = PasswordResetTokenGenerator().make_token(user)
-        link  = request.build_absolute_uri(
-            reverse("password_reset_confirm") + f"?uid={uid}&token={token}"
-        )
+        link = f"http://localhost:5173/reset-password?uid={uid}&token={token}"
+
 
         send_mail(
             "Password reset for School App",
@@ -415,3 +434,21 @@ class PasswordResetConfirmView(generics.GenericAPIView):
         ser.is_valid(raise_exception=True)
         ser.save()
         return Response({"detail": "Password has been reset."}, status=status.HTTP_200_OK)
+class ClassResultsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, class_id):
+        exams = Exam.objects.filter(target_class=class_id)
+        data = []
+
+        for exam in exams:
+            student_exams = StudentExam.objects.filter(exam=exam).select_related("student__user")
+            for se in student_exams:
+                data.append({
+                    "exam_title": exam.title,
+                    "student_name": se.student.user.get_full_name(),
+                    "score": se.score,
+                    "started_at": se.started_at,
+                    "finished_at": se.finished_at,
+                })
+        return Response(data)

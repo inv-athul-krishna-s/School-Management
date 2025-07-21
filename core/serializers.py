@@ -138,7 +138,7 @@ class ExamReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Exam
-        fields = ["id", "title", "description", "teacher_name",
+        fields = ["id", "title", "description", "teacher_name","target_class",
                   "start_time", "duration_min", "questions"]
 
 
@@ -148,7 +148,7 @@ class ExamCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Exam
-        fields = ["title", "description", "teacher",
+        fields = ["title", "description", "teacher","target_class",
                   "start_time", "duration_min", "questions"]
 
     def validate(self, data):
@@ -168,11 +168,29 @@ class ExamCreateSerializer(serializers.ModelSerializer):
             for opt in opts:
                 Option.objects.create(question=question, **opt)
         return exam
+    def update(self, instance, validated_data):
+        q_data = validated_data.pop("questions", [])
+    
+    # Update basic exam fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+    # Clear old questions and options
+        instance.questions.all().delete()
+
+    # Recreate questions and options
+        for q in q_data:
+            opts = q.pop("options")
+            question = Question.objects.create(exam=instance, **q)
+            for opt in opts:
+                Option.objects.create(question=question, **opt)
+
+        return instance
 
 
-# ─────────────────────────────────────────────
 #  STUDENT SUBMISSION & RESULTS
-# ─────────────────────────────────────────────
+
 class AnswerSerializer(serializers.Serializer):
     question_id = serializers.IntegerField()
     option_id   = serializers.IntegerField()
@@ -190,9 +208,9 @@ class StudentExamSerializer(serializers.ModelSerializer):
         fields = ["id", "student_name", "score", "started_at", "finished_at"]
 
 
-# ─────────────────────────────────────────────
-#  PASSWORD‑RESET SERIALIZERS  (add at end)
-# ─────────────────────────────────────────────
+
+#  PASSWORD‑RESET SERIALIZERS  
+
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import smart_bytes, smart_str

@@ -50,15 +50,13 @@ class Student(models.Model):
 from django.conf import settings
 from django.db import models
 
-# Assuming you already have Teacher and Student models in core.models
-# If they live elsewhere, change the import paths accordingly.
-
 class Exam(models.Model):
     """Created by an admin or a teacher; taken by the teacher’s students."""
     title        = models.CharField(max_length=120)
     description  = models.TextField(blank=True)
     teacher      = models.ForeignKey('core.Teacher', on_delete=models.PROTECT,
-                                     related_name='exams')
+                                     related_name='exams',null=True,blank=True)
+    target_class = models.CharField(max_length=50) #added a specific class for the exam
     start_time   = models.DateTimeField()
     duration_min = models.PositiveIntegerField()
     created_at   = models.DateTimeField(auto_now_add=True)

@@ -21,18 +21,21 @@ class IsTeacherOwner(BasePermission):
     def has_object_permission(self, request, view, obj):
         teacher = getattr(request.user, 'teacher', None)
         return teacher and obj.teacher == teacher
-
 class IsStudentOfTeacher(BasePermission):
     """
-    Student can access only objects that belong to their *assigned* teacher.
+    Allow students to access exams assigned by their teacher OR created by admin (teacher is None).
     """
     def has_object_permission(self, request, view, obj):
         student_profile = getattr(request.user, "student", None)
-        return (
-            student_profile
-            and student_profile.assigned_teacher == obj.teacher   # <‑‑ fix here
-        )
+        if not student_profile:
+            return False
 
+        # Allow access if exam was created by admin (teacher is None)
+        if obj.teacher is None:
+            return True
+
+        # Allow access only if exam's teacher matches student's assigned teacher
+        return student_profile.assigned_teacher == obj.teacher
 
 class IsSelfReadOnly(BasePermission):
     """GET/HEAD/OPTIONS only & only on own object"""

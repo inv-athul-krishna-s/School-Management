@@ -197,6 +197,26 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Not allowed."}, status=403)
         stu = Student.objects.filter(user=request.user).first()
         return Response(self.get_serializer(stu).data) if stu else Response({"detail": "Student profile not found."}, status=404)
+    @action(detail=False, methods=["get"], url_path="results")
+    def my_results(self, request):
+        if request.user.role != "student":
+            return Response({"detail": "Not allowed."}, status=403)
+
+        student = getattr(request.user, "student", None)
+        if not student:
+            return Response({"detail": "Student profile not found."}, status=404)
+
+        attempts = StudentExam.objects.filter(student=student).select_related("exam")
+        data = [
+            {
+                "exam_title": attempt.exam.title,
+                "score": attempt.score,
+                "started_at": attempt.started_at,
+                "finished_at": attempt.finished_at
+            }
+            for attempt in attempts
+        ]
+        return Response(data)
 
     @action(
         detail=False, methods=["post"], url_path="import",
@@ -237,7 +257,6 @@ class StudentViewSet(viewsets.ModelViewSet):
 
         return Response({"created": StudentSerializer(created, many=True).data, "errors": errors},
                         status=201 if created else 400)
-
 
 #  AUTH VIEW(S)
 
@@ -309,14 +328,10 @@ class ExamViewSet(viewsets.ModelViewSet):
 
         elif u.role == "student" and hasattr(u, "student"):
             assigned_teacher = u.student.assigned_teacher
-            student_class = u.student.student_class
+            student_class = self.request.user.student.student_class
+            base_class = ''.join(filter(str.isdigit, student_class))  # "10A" → "10"
 
-            return Exam.objects.filter(
-                teacher=assigned_teacher,
-                target_class=student_class
-        )
-
-        return Exam.objects.none()
+        return Exam.objects.filter(target_class=base_class)
 
 
     # ----- serializer choice -----
@@ -452,3 +467,4 @@ class ClassResultsView(APIView):
                     "finished_at": se.finished_at,
                 })
         return Response(data)
+    

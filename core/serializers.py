@@ -69,6 +69,7 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     user = StudentUserSerializer()
+    
 
     class Meta:
         model  = Student
@@ -246,4 +247,4 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user = self.validated_data["user"]
         user.set_password(self.validated_data["new_password"])
         user.save()
-
+        

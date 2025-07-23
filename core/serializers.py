@@ -13,7 +13,7 @@ from .models import (
 class BaseUserSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
-        fields = ("username", "email", "first_name", "last_name", "phone", "password")
+        fields = ("id","username", "email", "first_name", "last_name", "phone", "password")
         extra_kwargs = {
             "password": {"write_only": True, "required": False},
             "username": {"required": False},
@@ -65,15 +65,26 @@ class TeacherSerializer(serializers.ModelSerializer):
         sub.is_valid(raise_exception=True)
         sub.save()
         return super().update(instance, validated_data)
+    
+
 
 
 class StudentSerializer(serializers.ModelSerializer):
     user = StudentUserSerializer()
+    assigned_teacher = serializers.SerializerMethodField()
     
 
     class Meta:
         model  = Student
         fields = "__all__"
+
+    def get_assigned_teacher(self, obj):
+        if obj.assigned_teacher:
+            return {
+                "id": obj.assigned_teacher.user.id,
+                "name": obj.assigned_teacher.user.get_full_name()
+            }
+        return None
 
     def create(self, validated_data):
         user_data = validated_data.pop("user")

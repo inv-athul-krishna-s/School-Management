@@ -1,8 +1,6 @@
 # core/views.py
 from io import TextIOWrapper
 import csv
-from urllib import request
-from django.urls import reverse
 
 from django.db.models import Avg
 from django.utils import timezone
@@ -58,6 +56,24 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if u.role == "teacher":
             return Teacher.objects.filter(user=u)
         return Teacher.objects.none()
+    #To view their teacher
+    def retrieve(self, request, *args, **kwargs):
+        instance = Teacher.objects.filter(pk=kwargs["pk"]).first()
+        if not instance:
+            return Response({"detail": "Not found."}, status=404)
+
+    # Students can only read their own assigned teacher
+        if request.user.role == "student":
+            student = getattr(request.user, "student", None)
+            if not student or student.assigned_teacher_id != instance.pk:
+                return Response({"detail": "Not allowed."}, status=403)
+
+    # Teachers can read self, admins can read all
+        if request.user.role == "teacher" and instance.user != request.user:
+            return Response({"detail": "Not allowed."}, status=403)
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     # ----- permissions -----
     def get_permissions(self):
@@ -129,6 +145,9 @@ class StudentViewSet(viewsets.ModelViewSet):
         if u.role == "student":
             return Student.objects.filter(user=u)
         return Student.objects.none()
+    
+    def get_serializer_context(self):
+        return {"request": self.request}
 
     # ----- permissions -----
     def get_permissions(self):

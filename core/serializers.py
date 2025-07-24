@@ -2,6 +2,11 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import smart_bytes, smart_str
+
+
 from .models import (
     User, Teacher, Student,
     Exam, Question, Option, StudentExam
@@ -81,16 +86,23 @@ class StudentSerializer(serializers.ModelSerializer):
     def get_assigned_teacher(self, obj):
         if obj.assigned_teacher:
             return {
-                "id": obj.assigned_teacher.user.id,
+                "id": obj.assigned_teacher.id,
                 "name": obj.assigned_teacher.user.get_full_name()
             }
         return None
 
     def create(self, validated_data):
+        request = self.context.get("request")
         user_data = validated_data.pop("user")
         user = StudentUserSerializer().create(user_data)
-        return Student.objects.create(user=user, **validated_data)
 
+        # Automatically assign teacher if creator is a teacher
+        if request and request.user.role == "teacher":
+            teacher = getattr(request.user, "teacher", None)
+            if teacher:
+                validated_data["assigned_teacher"] = teacher
+
+        return Student.objects.create(user=user, **validated_data)
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})
         sub = StudentUserSerializer(instance=instance.user, data=user_data, partial=True)
@@ -151,7 +163,9 @@ class ExamReadSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Exam
         fields = ["id", "title", "description", "teacher_name","target_class",
-                  "start_time", "duration_min", "questions"]
+                  "start_time", "duration_min", "end_time", "questions"]
+    def get_end_time(self, obj):
+        return obj.end_time
 
 
 class ExamCreateSerializer(serializers.ModelSerializer):
@@ -222,10 +236,6 @@ class StudentExamSerializer(serializers.ModelSerializer):
 
 
 #  PASSWORD‑RESET SERIALIZERS  
-
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import smart_bytes, smart_str
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()

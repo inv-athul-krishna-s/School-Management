@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
-
+from datetime import timedelta
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -63,6 +63,9 @@ class Exam(models.Model):
 
     def __str__(self):
         return self.title
+    @property
+    def end_time(self):
+        return self.start_time + timedelta(minutes=self.duration_min)
 
 
 class Question(models.Model):

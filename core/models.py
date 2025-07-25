@@ -86,6 +86,10 @@ class Option(models.Model):
 
 class StudentExam(models.Model):
     """A student’s single attempt at an exam."""
+    STATUS_CHOICES = [
+        ("attempted", "Attempted"),
+        ("unattempted", "Unattempted")
+    ]
     student     = models.ForeignKey('core.Student', on_delete=models.CASCADE,
                                     related_name='exam_attempts')
     exam        = models.ForeignKey(Exam, on_delete=models.CASCADE,
@@ -94,6 +98,8 @@ class StudentExam(models.Model):
     finished_at = models.DateTimeField(null=True, blank=True)
     score       = models.DecimalField(max_digits=5, decimal_places=2,
                                       null=True, blank=True)
+    status      = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                                    default="unattempted")
 
     class Meta:
         unique_together = ('student', 'exam')

@@ -94,11 +94,17 @@ class TeacherViewSet(viewsets.ModelViewSet):
         if request.user.role != "admin":
             return Response({"detail": "Only admin can update teacher."}, status=403)
         return super().update(request, *args, **kwargs)
-
     def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
         if request.user.role != "admin":
             return Response({"detail": "Only admin can delete teacher."}, status=403)
-        return super().destroy(request, *args, **kwargs)
+
+        instance.status = "inactive"
+        instance.save()
+        instance.user.is_active = False
+        instance.user.save()
+        return Response({"detail": "Teacher set to inactive."}, status=200)
+
     
     @action(detail=True, methods=["get"])
     def students(self, request, pk=None):
@@ -195,16 +201,17 @@ class StudentViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        obj = self.get_object()
+        instance = self.get_object()
 
-        if request.user.role == "admin":
-            return super().destroy(request, *args, **kwargs)
-
-        if request.user.role == "teacher":
-            if obj.assigned_teacher and obj.assigned_teacher.user == request.user:
-                return super().destroy(request, *args, **kwargs)
-            else:
-                return Response({"detail": "Not your assigned student."}, status=403)
+        # Admins can soft delete any student; Teachers only their assigned students
+        if request.user.role == "admin" or \
+           (request.user.role == "teacher" and instance.assigned_teacher and instance.assigned_teacher.user == request.user):
+            
+            instance.status = "inactive"  # Soft delete
+            instance.save()
+            instance.user.is_active = False
+            instance.user.save()
+            return Response({"detail": "Student set to inactive."}, status=200)
 
         return Response({"detail": "Not allowed."}, status=403)
 
@@ -384,6 +391,21 @@ class ExamViewSet(viewsets.ModelViewSet):
         if self.action == "submit":
             return [IsAuthenticated(), IsStudentOfTeacher()]
         return [IsAuthenticated()]
+    
+
+
+    @action(detail=False, methods=["GET"])
+    def unattempted(self, request):
+        if request.user.role != "student":
+            return Response({"detail": "Not allowed."}, status=403)
+
+        student = request.user.student
+        now = timezone.now()
+
+        # Exams where student has NOT attempted and exam is over
+        exams = Exam.objects.filter(end_time__lt=now).exclude(attempts__student=student)
+        ser = ExamReadSerializer(exams, many=True)
+        return Response(ser.data)
 
     # ----- student POST /exams/<id>/submit/ -----
     @action(detail=True, methods=["POST"], serializer_class=SubmitExamSerializer)
@@ -414,6 +436,7 @@ class ExamViewSet(viewsets.ModelViewSet):
 
         attempt.finished_at = timezone.now()
         attempt.score = (correct / total) * 100 if total else 0
+        attempt.status = "attempted" 
         attempt.save()
         return Response({"score": attempt.score})
 

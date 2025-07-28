@@ -38,10 +38,12 @@ class Student(models.Model):
     status           = models.CharField(max_length=10, choices=[("active", "Active"), ("inactive", "Inactive")])
     assigned_teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True)
 
-    def delete(self, *args, **kwargs):
-        linked_user = self.user
-        super().delete(*args, **kwargs)
-        linked_user.delete()
+    def deactivate(self):
+        self.status = "inactive"
+        self.user.is_active = False
+        self.user.save()
+        self.save()
+
 
     def __str__(self):
         return f"{self.user.get_full_name()} – {self.roll_number}"

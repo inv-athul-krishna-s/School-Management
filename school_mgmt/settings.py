@@ -33,6 +33,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework_simplejwt',
     'core',
+    'channels',
     'rest_framework_simplejwt.token_blacklist',
 
 ]
@@ -106,8 +108,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'school_mgmt.wsgi.application'
-
-
+ASGI_APPLICATION = 'school_mgmt.asgi.application'
+# Channels configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [("127.0.0.1", 6379)],
+        }
+    },
+}
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 

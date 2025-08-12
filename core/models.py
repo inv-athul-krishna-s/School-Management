@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
 from datetime import timedelta
+from django.utils import timezone
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -115,3 +116,24 @@ class Answer(models.Model):
 
     class Meta:
         unique_together = ('attempt', 'question')
+
+
+
+
+class Chat(models.Model):
+    participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="chats")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="created_chats")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+class Message(models.Model):
+    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(default=timezone.now)
+    read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ("timestamp",)
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.content[:30]}"

@@ -19,12 +19,16 @@ from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny
 from rest_framework import generics
 
+
+
 from .models import User
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Exam, StudentExam
+from .models import Chat
+from .serializers import ChatSerializer
 
 from core.utils import CSVExportMixin
 from .models import (
@@ -509,4 +513,41 @@ class ClassResultsView(APIView):
                     "finished_at": se.finished_at,
                 })
         return Response(data)
-    
+
+# ─────────────────────────────────────────────
+#  CHAT VIEWS 
+# ─────────────────────────────────────────────
+class ChatViewSet(viewsets.ModelViewSet):
+    serializer_class = ChatSerializer
+    queryset = Chat.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Chat.objects.filter(participants=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        participants_ids = request.data.get("participants", [])
+
+        if len(participants_ids) != 1:
+            return Response({"detail": "Provide exactly one other participant ID."}, status=400)
+
+        other = User.objects.filter(id=participants_ids[0]).first()
+        if not other:
+            return Response({"detail": "User not found."}, status=404)
+
+        # Students can only start chat with assigned teacher
+        if user.role == "student":
+            if not user.student.assigned_teacher or user.student.assigned_teacher.user_id != other.id:
+                return Response({"detail": "Students can only chat with their assigned teacher."}, status=403)
+
+        # Teachers can only start chat with their own students
+        elif user.role == "teacher":
+            if not hasattr(other, "student") or other.student.assigned_teacher_id != user.teacher.id:
+                return Response({"detail": "Teachers can only chat with their own students."}, status=403)
+
+        # Create chat
+        chat = Chat.objects.create(created_by=user)
+        chat.participants.add(user, other)
+        serializer = self.get_serializer(chat)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

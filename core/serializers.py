@@ -9,12 +9,13 @@ from django.utils.encoding import smart_bytes, smart_str
 
 from .models import (
     User, Teacher, Student,
-    Exam, Question, Option, StudentExam
+    Exam, Question, Option, StudentExam,
+    Message, Chat,
 )
 
-# ─────────────────────────────────────────────
+
 #  USER / AUTH SERIALIZERS
-# ─────────────────────────────────────────────
+
 class BaseUserSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
@@ -123,10 +124,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["role"] = self.user.role
         return data
 
-# ─────────────────────────────────────────────
+
 #  EXAM / QUESTION / OPTION SERIALIZERS
-# ─────────────────────────────────────────────
-# -- WRITE‑ONLY (input) serializers --
 class OptionInputSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Option
@@ -269,3 +268,25 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.set_password(self.validated_data["new_password"])
         user.save()
         
+#chat message
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_username = serializers.CharField(source="sender.username", read_only=True)
+
+    class Meta:
+        model = Message
+        fields = ["id", "chat", "sender", "sender_username", "content", "timestamp", "read"]
+
+
+class ChatSerializer(serializers.ModelSerializer):
+    participants = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    created_by_username = serializers.CharField(source="created_by.username", read_only=True)
+    last_message = serializers.SerializerMethodField()
+    class Meta:
+        model = Chat
+        fields = ["id", "participants", "created_by_username", "last_message"]
+    def get_last_message(self, obj):
+        msg = obj.messages.order_by("-timestamp").first()
+        return MessageSerializer(msg).data if msg else None
+

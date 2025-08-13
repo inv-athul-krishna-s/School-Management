@@ -3,6 +3,9 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import ClassResultsView, PasswordResetRequestView, PasswordResetConfirmView
+    
+from .views import ChatViewSet
+
 
 from .views import (
     TeacherViewSet,
@@ -11,7 +14,7 @@ from .views import (
     LogoutView,
     TeacherExportView, 
     StudentExportView,
-    ExamViewSet
+    ExamViewSet,
 )
 
 # ──────────────
@@ -23,6 +26,10 @@ router.register("students", StudentViewSet, basename="student")
 router.register(r"teachers-export",  TeacherExportView, basename="teacher-export")
 router.register(r"students-export",  StudentExportView, basename="student-export")
 router.register("exams",           ExamViewSet,         basename="exam") 
+
+
+# Chat endpoints
+router.register("chats", ChatViewSet, basename="chat")
 
 # ──────────────
 #  URL Patterns
@@ -39,4 +46,6 @@ urlpatterns = [
 
     # Core REST endpoints
     path("", include(router.urls)),
+
+    
 ]

@@ -123,8 +123,7 @@ class Answer(models.Model):
 class Chat(models.Model):
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="chats")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="created_chats")
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
+    
 class Message(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name="messages")
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)

@@ -10,7 +10,8 @@ User = get_user_model()
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.chat_id = self.scope['url_route']['kwargs']['chat_id']
-        
+        self.room_group_name = f'chat_{self.chat_id}'  # Always set early
+
         # Extract token from query string
         query_string = self.scope["query_string"].decode()
         token = None
@@ -19,21 +20,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 token = part.split("=", 1)[1]
 
         if not token:
-            await self.close(code=4001)
+            await self.close(code=4001)  # Missing token
             return
 
         # Authenticate user
         self.user = await database_sync_to_async(self.authenticate_token)(token)
         if not self.user:
-            await self.close(code=4003)
+            await self.close(code=4003)  # Invalid token
             return
 
         # Check if user is in the chat
         if not await database_sync_to_async(self.user_in_chat)(self.user, self.chat_id):
-            await self.close(code=4004)
+            await self.close(code=4004)  # Not in chat
             return
-
-        self.room_group_name = f'chat_{self.chat_id}'
 
         # Join group
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
@@ -55,7 +54,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
+        # Only try to leave group if it was created
+        if hasattr(self, "room_group_name"):
+            await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):
         data = json.loads(text_data)

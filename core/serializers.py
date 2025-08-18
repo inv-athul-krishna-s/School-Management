@@ -273,20 +273,32 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source="sender.username", read_only=True)
+    sender_id = serializers.IntegerField(source="sender.id", read_only=True)
 
     class Meta:
         model = Message
-        fields = ["id", "chat", "sender", "sender_username", "content", "timestamp", "read"]
-
+        fields = ["id", "chat", "sender_id", "sender_username", "content", "timestamp", "read"]
 
 class ChatSerializer(serializers.ModelSerializer):
-    participants = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    participants_detail = serializers.SerializerMethodField()
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     last_message = serializers.SerializerMethodField()
+
     class Meta:
         model = Chat
-        fields = ["id", "participants", "created_by_username", "last_message"]
+        fields = ["id", "participants_detail", "created_by_username", "last_message"]
+
+    def get_participants_detail(self, obj):
+        return [
+            {
+                "id": u.id,
+                "username": u.username,
+                "role": u.role,
+                "full_name": u.get_full_name(),
+            }
+            for u in obj.participants.all()
+        ]
+
     def get_last_message(self, obj):
         msg = obj.messages.order_by("-timestamp").first()
         return MessageSerializer(msg).data if msg else None
-

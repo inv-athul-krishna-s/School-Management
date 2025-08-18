@@ -19,7 +19,7 @@ from django.core.mail import send_mail
 from rest_framework.permissions import AllowAny
 from rest_framework import generics
 
-
+from rest_framework.decorators import action
 
 from .models import User
 
@@ -29,6 +29,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Exam, StudentExam
 from .models import Chat
 from .serializers import ChatSerializer
+from .serializers import MessageSerializer
 
 from core.utils import CSVExportMixin
 from .models import (
@@ -523,7 +524,15 @@ class ChatViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """Return only chats where the current user is a participant"""
         return Chat.objects.filter(participants=self.request.user)
+
+    @action(detail=True, methods=["get"])
+    def messages(self, request, pk=None):
+        """Get all messages in this chat"""
+        chat = self.get_object()
+        msgs = chat.messages.select_related("sender").order_by("timestamp")
+        return Response(MessageSerializer(msgs, many=True).data)
 
     def create(self, request, *args, **kwargs):
         user = request.user
@@ -536,18 +545,35 @@ class ChatViewSet(viewsets.ModelViewSet):
         if not other:
             return Response({"detail": "User not found."}, status=404)
 
-        # Students can only start chat with assigned teacher
+        # Determine if chat already exists
+        existing_chat = Chat.objects.filter(participants=user)\
+                            .filter(participants=other)\
+                            .distinct()\
+                            .first()
+
+        if existing_chat:
+            # Return existing chat instead of creating a new one
+            serializer = self.get_serializer(existing_chat)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # Students → can only chat with assigned teacher
         if user.role == "student":
             if not user.student.assigned_teacher or user.student.assigned_teacher.user_id != other.id:
                 return Response({"detail": "Students can only chat with their assigned teacher."}, status=403)
+            teacher_user = user.student.assigned_teacher.user
+            chat = Chat.objects.create(created_by=user)
+            chat.participants.add(user, teacher_user)
 
-        # Teachers can only start chat with their own students
+        # Teachers → can only chat with their assigned students
         elif user.role == "teacher":
             if not hasattr(other, "student") or other.student.assigned_teacher_id != user.teacher.id:
                 return Response({"detail": "Teachers can only chat with their own students."}, status=403)
+            chat = Chat.objects.create(created_by=user)
+            chat.participants.add(user, other)
 
-        # Create chat
-        chat = Chat.objects.create(created_by=user)
-        chat.participants.add(user, other)
-        serializer = self.get_serializer(chat)
+        else:
+            return Response({"detail": "Only teachers or students can start chats."}, status=403)
+
+        serializer = self.get_serializer(chat, context={"request": request})
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)

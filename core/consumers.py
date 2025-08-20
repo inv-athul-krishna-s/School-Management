@@ -92,6 +92,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         content = data.get("content")
         target_chat_id = data.get("chat_id", None)
+        
 
         if not content:
             return

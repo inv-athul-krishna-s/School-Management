@@ -77,21 +77,27 @@ class TeacherSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     user = StudentUserSerializer()
-    assigned_teacher = serializers.SerializerMethodField()
-    
+    assigned_teacher = serializers.PrimaryKeyRelatedField(
+        queryset=Teacher.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model  = Student
         fields = "__all__"
 
-    def get_assigned_teacher(self, obj):
-        if obj.assigned_teacher:
-            return {
-                "id": obj.assigned_teacher.id,
-                "name": obj.assigned_teacher.user.get_full_name()
+    def to_representation(self, instance):
+        """Customize output so assigned_teacher shows id + name."""
+        data = super().to_representation(instance)
+        if instance.assigned_teacher:
+            data["assigned_teacher"] = {
+                "id": instance.assigned_teacher.id,
+                "name": instance.assigned_teacher.user.get_full_name(),
             }
-        return None
-
+        else:
+            data["assigned_teacher"] = None
+        return data
     def create(self, validated_data):
         request = self.context.get("request")
         user_data = validated_data.pop("user")

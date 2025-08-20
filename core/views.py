@@ -110,13 +110,6 @@ class TeacherViewSet(viewsets.ModelViewSet):
         instance.user.save()
         return Response({"detail": "Teacher set to inactive."}, status=200)
 
-    
-    @action(detail=True, methods=["get"])
-    def students(self, request, pk=None):
-        teacher = self.get_object()
-        students = Student.objects.filter(assigned_teacher=teacher)
-        serializer = StudentSerializer(students, many=True)
-        return Response(serializer.data)
 
     # ----- custom endpoints -----
     @action(detail=False, methods=["get"], url_path="me")
@@ -341,9 +334,9 @@ class StudentExportView(CSVExportMixin, StudentViewSet):
 # ─────────────────────────────────────────────
 class ExamViewSet(viewsets.ModelViewSet):
     """
-    Admin      → sees all exams, can create and assign any teacher  
-    Teacher    → sees & edits only own exams, auto‑assigned on create  
-    Student    → sees exams created by their assigned_teacher  and admin 
+    Admin      →sees all exams, can create and assign any teacher  
+    Teacher    →sees & edits only own exams, auto-assigned on create  
+    Student    →sees exams created by their assigned_teacher  and admin 
     """
     permission_classes = [IsAuthenticated]
 
